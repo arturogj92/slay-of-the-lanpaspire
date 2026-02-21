@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ Slay of the Lanpaspire</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d1a;
+    color: #e0d5c5;
+    font-family: 'Segoe UI', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 { font-size: 2.2rem; color: #ffd700; text-shadow: 0 0 20px #ffd70088; padding: 20px; }
+  h2 { font-size: 1.3rem; color: #c8a96a; margin-bottom: 10px; }
+
+  .screen { display: none; width: 100%; max-width: 900px; padding: 20px; }
+  .screen.active { display: block; }
+
+  /* ── Start screen ── */
+  #start-screen { text-align: center; }
+  .char-grid { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .char-card {
+    background: #1a1a2e;
+    border: 2px solid #333;
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+    width: 130px;
+    transition: all 0.2s;
+  }
+  .char-card:hover, .char-card.selected { border-color: #ffd700; background: #252545; }
+  .char-card .emoji { font-size: 2.5rem; }
+  .char-card .name { font-size: 0.9rem; margin-top: 5px; color: #c8a96a; }
+  .char-card .hp { font-size: 0.8rem; color: #e05; margin-top: 3px; }
+
+  input[type=text] {
+    background: #1a1a2e; border: 1px solid #555; color: #e0d5c5;
+    padding: 10px 15px; border-radius: 8px; font-size: 1rem; width: 250px;
+  }
+
+  button {
+    background: #8b1a1a; color: #ffd700; border: none; border-radius: 8px;
+    padding: 10px 24px; font-size: 1rem; cursor: pointer; font-weight: bold;
+    transition: all 0.2s; margin: 5px;
+  }
+  button:hover { background: #c12b2b; transform: scale(1.03); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  button.blue { background: #1a4a8b; color: #ddf; }
+  button.blue:hover { background: #2b6cc1; }
+  button.green { background: #1a6b1a; color: #dfd; }
+  button.green:hover { background: #2c8b2c; }
+  button.grey { background: #333; color: #aaa; }
+  button.grey:hover { background: #555; }
+
+  /* ── Combat screen ── */
+  .combat-bg {
+    background-image: var(--bg-url);
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+  }
+  .combat-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .entity-card {
+    background: rgba(0,0,0,0.7);
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 160px;
+    border: 1px solid #444;
+  }
+  .entity-card.player { border-color: #4a9; }
+  .entity-card.enemy { border-color: #e54; }
+  .entity-name { font-size: 1.1rem; font-weight: bold; }
+  .hp-bar-wrap { background: #333; border-radius: 4px; height: 14px; margin: 6px 0; overflow: hidden; }
+  .hp-bar { background: #e05; height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .hp-bar.player { background: #3a9; }
+  .hp-text { font-size: 0.8rem; color: #aaa; }
+  .status-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .chip {
+    font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; background: #333;
+    border: 1px solid #555;
+  }
+  .chip.poison { background: #2a1a3a; border-color: #8a4; color: #8f4; }
+  .chip.weak { background: #3a2a1a; border-color: #a84; color: #f84; }
+  .chip.vulnerable { background: #3a1a1a; border-color: #a44; color: #f44; }
+  .chip.strength { background: #1a2a1a; border-color: #484; color: #8f8; }
+  .chip.block { background: #1a2a3a; border-color: #44a; color: #88f; }
+
+  .combat-middle { text-align: center; padding: 10px; }
+  .energy-display { font-size: 1.5rem; color: #ffd700; }
+  .turn-info { font-size: 0.85rem; color: #888; margin-top: 4px; }
+
+  /* ── Cards ── */
+  .hand-area {
+    margin-top: 20px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 12px;
+    padding: 15px;
+  }
+  .hand-title { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
+  .cards-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .card {
+    background: #1a1a2e;
+    border: 2px solid #444;
+    border-radius: 10px;
+    padding: 10px;
+    width: 110px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    text-align: center;
+  }
+  .card:hover { transform: translateY(-8px); border-color: #ffd700; background: #252545; }
+  .card.unplayable { opacity: 0.45; cursor: not-allowed; }
+  .card.unplayable:hover { transform: none; border-color: #444; }
+  .card.attack { border-color: #a33; }
+  .card.defense { border-color: #33a; }
+  .card.skill { border-color: #3a3; }
+  .card.curse { border-color: #666; opacity: 0.6; cursor: not-allowed; }
+  .card-cost {
+    position: absolute; top: -8px; left: -8px;
+    background: #ffd700; color: #000; font-weight: bold;
+    border-radius: 50%; width: 22px; height: 22px;
+    font-size: 0.8rem; display: flex; align-items: center; justify-content: center;
+  }
+  .card-emoji { font-size: 1.8rem; margin: 5px 0; }
+  .card-name { font-size: 0.75rem; font-weight: bold; color: #e0d5c5; margin: 3px 0; }
+  .card-desc { font-size: 0.65rem; color: #999; line-height: 1.3; }
+
+  /* ── Log ── */
+  .combat-log {
+    background: rgba(0,0,0,0.7);
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 15px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #bbb;
+  }
+  .combat-log .log-entry { border-bottom: 1px solid #222; padding: 2px 0; }
+  .log-damage { color: #f86; }
+  .log-block { color: #88f; }
+  .log-heal { color: #8f8; }
+  .log-enemy { color: #fa8; }
+  .log-card { color: #fd8; }
+
+  /* ── Reward / Result screens ── */
+  .result-banner {
+    text-align: center; padding: 30px;
+    font-size: 2rem; font-weight: bold;
+  }
+  .win { color: #ffd700; }
+  .lose { color: #e05; }
+  .reward-cards { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .reward-card {
+    background: #1a1a2e; border: 2px solid #555; border-radius: 12px;
+    padding: 15px; width: 130px; text-align: center; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .reward-card:hover { border-color: #ffd700; background: #252545; transform: scale(1.05); }
+
+  .deck-preview { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+  .mini-card {
+    background: #1a1a2e; border: 1px solid #444; border-radius: 6px;
+    padding: 3px 7px; font-size: 0.7rem; color: #bbb;
+  }
+
+  @media (max-width: 600px) {
+    .char-card { width: 100px; }
+    .card { width: 90px; }
+  }
+</style>
+</head>
+<body>
+<h1>⚔️ Slay of the Lanpaspire</h1>
+
+<!-- ── START SCREEN ── -->
+<div id="start-screen" class="screen active">
+  <h2>Elige tu personaje</h2>
+  <div class="char-grid" id="char-grid">
+    <div class="char-card" data-id="arturo" onclick="selectChar(this)">
+      <div class="emoji">👑</div>
+      <div class="name">Arturo</div>
+      <div class="hp">❤️ 80 HP</div>
+    </div>
+    <div class="char-card" data-id="victor" onclick="selectChar(this)">
+      <div class="emoji">🤖</div>
+      <div class="name">Víctor</div>
+      <div class="hp">❤️ 70 HP</div>
+    </div>
+    <div class="char-card" data-id="nacho" onclick="selectChar(this)">
+      <div class="emoji">🌊</div>
+      <div class="name">Nacho</div>
+      <div class="hp">❤️ 75 HP</div>
+    </div>
+    <div class="char-card" data-id="juan" onclick="selectChar(this)">
+      <div class="emoji">🏗️</div>
+      <div class="name">Juan</div>
+      <div class="hp">❤️ 90 HP</div>
+    </div>
+    <div class="char-card" data-id="rober" onclick="selectChar(this)">
+      <div class="emoji">🎸</div>
+      <div class="name">Rober</div>
+      <div class="hp">❤️ 65 HP</div>
+    </div>
+    <div class="char-card" data-id="pollo" onclick="selectChar(this)">
+      <div class="emoji">🐔</div>
+      <div class="name">Pollo</div>
+      <div class="hp">❤️ 72 HP</div>
+    </div>
+  </div>
+  <div style="margin: 20px 0;">
+    <input type="text" id="player-name" placeholder="Tu nombre de jugador" value="Arturo" />
+  </div>
+  <button onclick="startRun()">⚔️ Empezar Run</button>
+  <p id="start-error" style="color:#e05; margin-top:10px;"></p>
+</div>
+
+<!-- ── COMBAT SCREEN ── -->
+<div id="combat-screen" class="screen">
+  <div class="combat-bg" id="combat-bg">
+    <div class="combat-header">
+      <div class="entity-card player">
+        <div class="entity-name" id="player-name-display">Tú</div>
+        <div class="hp-bar-wrap"><div class="hp-bar player" id="player-hp-bar" style="width:100%"></div></div>
+        <div class="hp-text" id="player-hp-text">80/80 HP</div>
+        <div id="player-block-display" style="font-size:0.8rem; color:#88f; margin-top:3px;"></div>
+        <div class="status-chips" id="player-statuses"></div>
+      </div>
+
+      <div class="combat-middle">
+        <div class="energy-display">⚡ <span id="energy-current">3</span>/<span id="energy-max">3</span></div>
+        <div class="turn-info">Turno <span id="turn-num">1</span></div>
+        <div style="margin-top:15px; font-size:0.75rem; color:#888;">
+          🃏 <span id="draw-count">0</span> en mazo | 🗑️ <span id="discard-count">0</span> en descarte
+        </div>
+        <button class="green" id="end-turn-btn" style="margin-top:15px;" onclick="endTurn()">⏭️ Fin de Turno</button>
+      </div>
+
+      <div class="entity-card enemy">
+        <div class="entity-name" id="enemy-name">Enemigo</div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="enemy-hp-bar" style="width:100%"></div></div>
+        <div class="hp-text" id="enemy-hp-text">?/?</div>
+        <div id="enemy-block-display" style="font-size:0.8rem; color:#88f; margin-top:3px;"></div>
+        <div id="enemy-intent" style="font-size:0.8rem; color:#fa8; margin-top:4px;">🤔 Intención desconocida</div>
+        <div class="status-chips" id="enemy-statuses"></div>
+      </div>
+    </div>
+
+    <div class="hand-area">
+      <div class="hand-title">Tu mano (<span id="hand-count">0</span> cartas)</div>
+      <div class="cards-row" id="hand-cards"></div>
+    </div>
+
+    <div class="combat-log" id="combat-log"></div>
+  </div>
+</div>
+
+<!-- ── REWARD SCREEN ── -->
+<div id="reward-screen" class="screen">
+  <div class="result-banner win">⚔️ ¡Victoria!</div>
+  <p id="reward-gold" style="text-align:center; color:#ffd700; margin-bottom:15px;"></p>
+  <h2>Elige una carta recompensa:</h2>
+  <div class="reward-cards" id="reward-cards"></div>
+  <div style="text-align:center; margin-top:10px;">
+    <button class="grey" onclick="skipReward()">Saltar recompensa</button>
+  </div>
+</div>
+
+<!-- ── DEFEAT SCREEN ── -->
+<div id="defeat-screen" class="screen">
+  <div class="result-banner lose">💀 Has muerto</div>
+  <p id="defeat-msg" style="text-align:center; margin: 15px 0; color:#888;"></p>
+  <div style="text-align:center;">
+    <button onclick="showScreen('start-screen')">🔄 Intentar de nuevo</button>
+  </div>
+</div>
+
+<script>
+const API = '';
+let state = { runId: null, pendingRewards: null };
+
+// ── Helpers ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function selectChar(el) {
+  document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'API error');
+  return d;
+}
+
+// ── Start Run ──
+async function startRun() {
+  const selected = document.querySelector('.char-card.selected');
+  const player_name = document.getElementById('player-name').value.trim() || 'Player';
+  const character_id = selected ? selected.dataset.id : 'arturo';
+
+  try {
+    const data = await api('/api/run/new', 'POST', { player_name, character_id });
+    state.runId = data.run.id;
+    await startCombat();
+  } catch (e) {
+    document.getElementById('start-error').textContent = e.message;
+  }
+}
+
+async function startCombat() {
+  try {
+    const data = await api(`/api/run/${state.runId}/combat/start`, 'POST', { enemy_type: 'normal' });
+    renderCombat(data);
+    showScreen('combat-screen');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+// ── Render combat state ──
+function renderCombat(data) {
+  const run = data;
+  const combat = data.combat;
+  if (!combat) return;
+
+  document.getElementById('player-name-display').textContent = run.player_name + ' ' + charEmoji(run.character_id);
+
+  // Player HP
+  const hpPct = Math.max(0, (run.hp / run.hp_max) * 100);
+  document.getElementById('player-hp-bar').style.width = hpPct + '%';
+  document.getElementById('player-hp-text').textContent = `${run.hp}/${run.hp_max} HP`;
+  document.getElementById('player-block-display').textContent = combat.block > 0 ? `🛡️ ${combat.block} escudo` : '';
+
+  // Enemy
+  const enemyPct = Math.max(0, (combat.enemy_hp / combat.enemy_hp_max) * 100);
+  document.getElementById('enemy-hp-bar').style.width = enemyPct + '%';
+  document.getElementById('enemy-hp-text').textContent = `${combat.enemy_hp}/${combat.enemy_hp_max} HP`;
+  document.getElementById('enemy-name').textContent = enemyName(combat.enemy_id);
+  document.getElementById('enemy-block-display').textContent = combat.enemy_block > 0 ? `🛡️ ${combat.enemy_block} escudo` : '';
+  document.getElementById('enemy-intent').textContent = `⚔️ ${combat.enemy_intent_value} daño`;
+
+  // Energy & turn
+  document.getElementById('energy-current').textContent = combat.energy;
+  document.getElementById('energy-max').textContent = combat.energy_max;
+  document.getElementById('turn-num').textContent = combat.turn;
+  document.getElementById('draw-count').textContent = combat.draw_count;
+  document.getElementById('discard-count').textContent = combat.discard.length;
+  document.getElementById('hand-count').textContent = combat.hand.length;
+
+  // Statuses
+  renderStatuses('player-statuses', combat.statuses);
+  renderStatuses('enemy-statuses', combat.enemy_statuses);
+
+  // Hand
+  renderHand(combat.hand, combat.energy);
+
+  // Log
+  renderLog(combat.log);
+
+  // Background based on act
+  const bg = `url('/assets/backgrounds/act${run.act}_tavern.png')`;
+  document.getElementById('combat-bg').style.setProperty('--bg-url', bg);
+}
+
+function charEmoji(id) {
+  return { arturo:'👑', victor:'🤖', nacho:'🌊', juan:'🏗️', rober:'🎸', pollo:'🐔' }[id] || '🧙';
+}
+
+function enemyName(id) {
+  return {
+    bug_rastrero: '🐛 Bug Rastrero',
+    el_lunes: '💤 El Lunes',
+    el_ticket: '📋 El Ticket',
+    hotfix_enemy: '🔥 Hotfix Urgente',
+    langostino_salvaje: '🦞 Langostino Salvaje',
+    la_resaca: '🤢 La Resaca',
+    deploy_del_viernes: '💀 Deploy del Viernes',
+    el_fin_de_mes: '💸 El Fin de Mes',
+    la_suegra: '👁️ La Suegra'
+  }[id] || id;
+}
+
+function renderStatuses(elId, statuses) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  for (const [k, v] of Object.entries(statuses || {})) {
+    if (v <= 0) continue;
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + k;
+    chip.textContent = statusEmoji(k) + ' ' + k + ' ' + v;
+    el.appendChild(chip);
+  }
+}
+
+function statusEmoji(s) {
+  return { poison:'☠️', weak:'💧', vulnerable:'💔', strength:'💪', block:'🛡️' }[s] || '⭐';
+}
+
+function renderHand(hand, energy) {
+  const el = document.getElementById('hand-cards');
+  el.innerHTML = '';
+  hand.forEach(cardId => {
+    el.appendChild(createCardEl(cardId, energy));
+  });
+}
+
+function createCardEl(cardId, energy) {
+  const CARD_DEFS = window._cards || {};
+  const card = CARD_DEFS[cardId];
+  if (!card) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.textContent = cardId;
+    return div;
+  }
+
+  const canPlay = card.cost <= energy && card.type !== 'curse';
+  const div = document.createElement('div');
+  div.className = `card ${card.type} ${canPlay ? '' : 'unplayable'}`;
+  div.innerHTML = `
+    <div class="card-cost">${card.cost}</div>
+    <div class="card-emoji">${card.emoji}</div>
+    <div class="card-name">${card.name}</div>
+    <div class="card-desc">${card.desc}</div>
+  `;
+  if (canPlay) {
+    div.onclick = () => playCard(cardId);
+  }
+  return div;
+}
+
+function renderLog(log) {
+  const el = document.getElementById('combat-log');
+  el.innerHTML = '';
+  (log || []).slice(-30).forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    const cls = {
+      damage: 'log-damage', block: 'log-block', heal: 'log-heal',
+      enemy_attack: 'log-enemy', card: 'log-card'
+    }[entry.type] || '';
+    div.innerHTML = `<span class="${cls}">${entry.text}</span>`;
+    el.appendChild(div);
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Play card ──
+async function playCard(cardId) {
+  document.getElementById('end-turn-btn').disabled = true;
+  try {
+    const data = await api(`/api/run/${state.runId}/combat/play`, 'POST', { card_id: cardId });
+    if (data.result === 'victory') return handleVictory(data);
+    if (data.result === 'defeat') return handleDefeat(data);
+    renderCombat(data);
+  } catch(e) {
+    console.warn(e.message);
+  } finally {
+    document.getElementById('end-turn-btn').disabled = false;
+  }
+}
+
+async function endTurn() {
+  document.getElementById('end-turn-btn').disabled = true;
+  try {
+    const data = await api(`/api/run/${state.runId}/combat/end-turn`, 'POST');
+    if (data.result === 'defeat') return handleDefeat(data);
+    renderCombat(data);
+  } catch(e) {
+    console.warn(e.message);
+  } finally {
+    document.getElementById('end-turn-btn').disabled = false;
+  }
+}
+
+// ── Victory / Defeat ──
+function handleVictory(data) {
+  state.pendingRewards = { rewards: data.card_rewards, gold: data.gold_earned };
+  document.getElementById('reward-gold').textContent = `💰 +${data.gold_earned} oro`;
+  const el = document.getElementById('reward-cards');
+  el.innerHTML = '';
+  (data.card_rewards || []).forEach(card => {
+    const div = document.createElement('div');
+    div.className = 'reward-card';
+    div.innerHTML = `<div style="font-size:2rem">${card.emoji}</div><div style="font-size:0.85rem; font-weight:bold; margin:5px 0">${card.name}</div><div style="font-size:0.7rem; color:#999">${card.desc}</div>`;
+    div.onclick = () => pickReward(card.id);
+    el.appendChild(div);
+  });
+  showScreen('reward-screen');
+}
+
+async function pickReward(cardId) {
+  await api(`/api/run/${state.runId}/combat/reward`, 'POST', { card_id: cardId });
+  await startCombat();
+}
+
+async function skipReward() {
+  await api(`/api/run/${state.runId}/combat/reward`, 'POST', { card_id: 'skip' });
+  await startCombat();
+}
+
+function handleDefeat(data) {
+  document.getElementById('defeat-msg').textContent =
+    `Llegaste al piso ${data.floor || '?'} · Turno ${data.combat?.turn || '?'}`;
+  showScreen('defeat-screen');
+}
+
+// ── Load card defs on boot ──
+fetch('/api/cards').then(r => r.json()).then(cards => { window._cards = cards; });
+</script>
+</body>
+</html>
