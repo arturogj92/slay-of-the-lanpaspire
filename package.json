@@ -1,0 +1,17 @@
+{
+  "name": "slay-of-the-lanpaspire",
+  "version": "0.1.0",
+  "description": "Roguelike deckbuilder inspired by Slay the Spire - Los Yikos edition",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "socket.io": "^4.7.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "author": "Los Yikos (Coig, Claudio, Toru, Burricalvo)",
+  "license": "MIT"
+}
